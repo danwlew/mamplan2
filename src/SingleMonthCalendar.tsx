@@ -1,4 +1,3 @@
-// SingleMonthCalendar.tsx
 import React, { useState } from 'react';
 import {
   format,
@@ -9,15 +8,19 @@ import {
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
-  isToday
+  isToday,
 } from 'date-fns';
 import { Language } from './translations';
 
 interface SingleMonthCalendarProps {
   language: Language;
+  darkMode: boolean; // Nowy prop
 }
 
-export default function SingleMonthCalendar({ language }: SingleMonthCalendarProps) {
+export default function SingleMonthCalendar({
+  language,
+  darkMode,
+}: SingleMonthCalendarProps) {
   const [displayDate, setDisplayDate] = useState<Date>(new Date());
   const monthName: string = format(displayDate, 'LLLL yyyy');
 
@@ -35,18 +38,18 @@ export default function SingleMonthCalendar({ language }: SingleMonthCalendarPro
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
-    <div className="mt-8">
+    <div className={`mt-8 ${darkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-900'}`}>
       <div className="flex justify-between items-center mb-2">
         <button
           onClick={handlePrev}
-          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          className={`px-3 py-1 rounded ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'}`}
         >
           {language === 'pl' ? 'Poprzedni' : 'Previous'}
         </button>
         <h3 className="text-center font-semibold">{monthName}</h3>
         <button
           onClick={handleNext}
-          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          className={`px-3 py-1 rounded ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'}`}
         >
           {language === 'pl' ? 'Następny' : 'Next'}
         </button>
@@ -56,7 +59,12 @@ export default function SingleMonthCalendar({ language }: SingleMonthCalendarPro
         <thead>
           <tr>
             {dayNames.map((d) => (
-              <th key={d} className="p-1 border text-center font-medium bg-gray-100">
+              <th
+                key={d}
+                className={`p-1 border text-center font-medium ${
+                  darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800'
+                }`}
+              >
                 {d}
               </th>
             ))}
@@ -77,8 +85,16 @@ export default function SingleMonthCalendar({ language }: SingleMonthCalendarPro
                       key={day.toISOString()}
                       className={`
                         p-1 border text-center
-                        ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}
-                        ${highlightToday ? 'bg-yellow-200 font-semibold' : ''}
+                        ${
+                          !isCurrentMonth
+                            ? darkMode
+                              ? 'text-gray-500'
+                              : 'text-gray-400'
+                            : darkMode
+                            ? 'text-gray-200'
+                            : 'text-gray-800'
+                        }
+                        ${highlightToday ? (darkMode ? 'bg-yellow-600' : 'bg-yellow-200') : ''}
                       `}
                     >
                       {format(day, 'd')}
