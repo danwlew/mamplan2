@@ -470,7 +470,7 @@ export default function App() {
     <div
       className={
         darkMode
-          ? 'bg-black text-lime-500 min-h-screen py-12 px-4 sm:px-6 lg:px-8'
+          ? 'bg-black text-lime-600 min-h-screen py-12 px-4 sm:px-6 lg:px-8'
           : 'bg-gradient-to-br from-purple-100 to-indigo-100 text-gray-800 min-h-screen py-12 px-4 sm:px-6 lg:px-8'
       }
     >
