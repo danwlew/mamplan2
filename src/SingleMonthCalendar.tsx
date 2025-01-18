@@ -11,7 +11,7 @@ import {
   eachDayOfInterval,
   isToday
 } from 'date-fns';
-import { Language, translations } from './translations';
+import { Language } from './translations';
 
 interface SingleMonthCalendarProps {
   language: Language;
