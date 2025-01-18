@@ -7,7 +7,6 @@ interface RruleGraphicProps {
   setAdvancedRRule: React.Dispatch<React.SetStateAction<string>>;
 }
 
-// Przykład minimalny. Możesz dodać w razie potrzeby więcej stałych/dozwolonych wartości.
 export default function RruleGraphic({ language, setAdvancedRRule }: RruleGraphicProps) {
   const t = (key: keyof typeof translations['pl']) => translations[language][key];
 
@@ -39,7 +38,6 @@ export default function RruleGraphic({ language, setAdvancedRRule }: RruleGraphi
   return (
     <div className="p-2 border rounded">
       <p className="font-semibold mb-2">{t('rruleGraphic')}</p>
-
       {/* FREQ */}
       <label className="block text-sm font-medium mb-1">{t('freq')}</label>
       <select
