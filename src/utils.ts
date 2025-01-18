@@ -26,4 +26,5 @@ export function isIOSSafari(): boolean {
   const iOS = /iP(hone|od|ad)/.test(userAgent);
   const webkit = /WebKit/.test(userAgent);
   // CriOS = Chrome on iOS; FxiOS = Firefox on iOS
-  return iOS && webkit && !/Cr
+  return iOS && webkit && !/CriOS|FxiOS/.test(userAgent);
+}
