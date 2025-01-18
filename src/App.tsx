@@ -600,7 +600,7 @@ export default function App() {
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="block w-full pl-10 rounded-md border-gray-300 p-2 text-green-300"
+                    className="block w-full pl-10 rounded-md border-gray-300 p-2"
                   />
                 </div>
               </div>
