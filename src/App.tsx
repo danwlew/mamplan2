@@ -13,10 +13,16 @@ import {
 import { createEvents } from 'ics';
 import { format, addMinutes, differenceInMinutes, isBefore } from 'date-fns';
 
-import { parseTimeToMinutes, isValidEmail, getTimezoneOffsetInHours } from './utils';
+import {
+  parseTimeToMinutes,
+  isValidEmail,
+  getTimezoneOffsetInHours,
+  isIOSSafari
+} from './utils';
 import { translations, Language, TranslationKeys } from './translations';
 import SingleMonthCalendar from './SingleMonthCalendar';
 import RruleGraphic from './RruleGraphic';
+import CookieBanner from './CookieBanner';
 
 type Attendee = {
   name?: string;
@@ -38,7 +44,9 @@ export default function App() {
   const [duration, setDuration] = useState<string>('60');
   const [useEndTime, setUseEndTime] = useState<boolean>(false);
 
-  const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'weekend' | 'workdays'>('none');
+  const [recurrence, setRecurrence] = useState<
+    'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'weekend' | 'workdays'
+  >('none');
 
   const [timeZone, setTimeZone] = useState<string>('Europe/Warsaw');
   const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -52,7 +60,7 @@ export default function App() {
   // Zaawansowane
   const [isAdvanced, setIsAdvanced] = useState<boolean>(false);
   const [advancedRRule, setAdvancedRRule] = useState<string>('');
-  const [notificationTime, setNotificationTime] = useState<string>('5');
+  const [notificationTime, setNotificationTime] = useState<string>('5'); // w ICS
   const [workStart, setWorkStart] = useState<string>('09:00');
   const [workEnd, setWorkEnd] = useState<string>('17:00');
   const [ignoreWorkHours, setIgnoreWorkHours] = useState<boolean>(false);
@@ -67,6 +75,9 @@ export default function App() {
   // Błędy
   const [errors, setErrors] = useState<string[]>([]);
 
+  // Czy iOS Safari
+  const [isIOS, setIsIOS] = useState<boolean>(false);
+
   // Czas bieżący do wyświetlania
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   useEffect(() => {
@@ -74,12 +85,15 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Prośba o dostęp do powiadomień
+  // Wykrywanie iOS Safari
   useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (isIOSSafari()) {
+      setIsIOS(true);
     }
   }, []);
+
+  // --- DODATKOWA OPCJA: Alternatywna nazwa pliku ICS ---
+  const [alternativeFileName, setAlternativeFileName] = useState<boolean>(false);
 
   // --- FUNKCJE ---
 
@@ -130,7 +144,6 @@ export default function App() {
       );
     }
 
-    // Sprawdź przeszłość
     if (date && time) {
       const startDateTime = new Date(`${date}T${time}`);
       if (isBefore(startDateTime, new Date())) {
@@ -142,7 +155,6 @@ export default function App() {
       }
     }
 
-    // Godziny pracy
     if (isAdvanced && !ignoreWorkHours && time) {
       const eventStartMin = parseTimeToMinutes(time);
       const workStartMin = parseTimeToMinutes(workStart);
@@ -150,12 +162,13 @@ export default function App() {
 
       if (eventStartMin < workStartMin || eventStartMin >= workEndMin) {
         newErrors.push(
-          language === 'pl' ? t('outOfOffice') : t('eventOutsideHours')
+          language === 'pl'
+            ? translations['pl'].outOfOffice
+            : translations['en'].eventOutsideHours
         );
       }
     }
 
-    // E-maile
     if (contacts.trim()) {
       const contactList = contacts.split(',').map((c) => c.trim());
       contactList.forEach((c) => {
@@ -173,39 +186,7 @@ export default function App() {
     return newErrors.length === 0;
   }
 
-  function scheduleNotification() {
-    if (Notification.permission !== 'granted') {
-      alert(
-        language === 'pl'
-          ? 'Proszę włączyć powiadomienia w przeglądarce (lub je odblokować).'
-          : 'Please enable notifications in your browser.'
-      );
-      return;
-    }
-
-    const startDateTime = new Date(`${date}T${time}`);
-    const notifyMinutes = parseInt(notificationTime, 10) || 5;
-    const notificationTimeMs = startDateTime.getTime() - notifyMinutes * 60 * 1000;
-    const currentTimeMs = new Date().getTime();
-
-    if (notificationTimeMs > currentTimeMs) {
-      const delay = notificationTimeMs - currentTimeMs;
-      setTimeout(() => {
-        new Notification(
-          language === 'pl' ? 'Przypomnienie o wydarzeniu' : 'Event reminder',
-          { body: title }
-        );
-      }, delay);
-    } else {
-      alert(
-        language === 'pl'
-          ? 'Ustawiona godzina powiadomienia już minęła.'
-          : 'Reminder time has already passed.'
-      );
-    }
-  }
-
-  // Obsługa CSV
+  // Import CSV
   function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -238,7 +219,7 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  // Generowanie pliku ICS
+  // Generowanie ICS
   function handleGenerateICS() {
     if (!validateData()) return;
 
@@ -253,28 +234,26 @@ export default function App() {
       );
     }
 
+    const startDateTime = new Date(`${date}T${time}`);
     const { attendees } = parseContacts();
 
+    // alarm do ICS (web notifications usunięte)
     const alarms = isAdvanced
       ? [
           {
             action: 'display',
             description:
               language === 'pl'
-                ? `Powiadomienie o wydarzeniu: ${title}`
+                ? `Powiadomienie: ${title}`
                 : `Event reminder: ${title}`,
             trigger: { minutes: parseInt(notificationTime, 10), before: true }
           }
         ]
       : [];
 
-    // Załączniki
     const attachObj = attachments.map((url) => ({ uri: url }));
-
-    // CLASS w ICS
     const icsClass = meetingClass === 'private' ? 'PRIVATE' : 'PUBLIC';
 
-    // Określenie RRULE
     let rrule: string | undefined;
     if (isAdvanced && advancedRRule.trim()) {
       rrule = advancedRRule.trim();
@@ -303,7 +282,6 @@ export default function App() {
       }
     }
 
-    // createEvents z biblioteki "ics"
     createEvents(
       [
         {
@@ -317,7 +295,7 @@ export default function App() {
           attachments: attachObj,
           recurrenceRule: rrule,
           startOutputType: 'local',
-          class: icsClass // 'PUBLIC'/'PRIVATE'
+          class: icsClass
         }
       ],
       (error: Error | null, value: string | undefined) => {
@@ -328,11 +306,29 @@ export default function App() {
         }
         if (!value) return;
 
+        // Nazwa pliku
+        let fileName = 'plan-event.ics';
+        if (alternativeFileName) {
+          // meeting20250117-1300.ics
+          const customDateString = format(startDateTime, 'yyyyMMdd-HHmm');
+          fileName = `meeting${customDateString}.ics`;
+        }
+
         const blob = new Blob([value], { type: 'text/calendar' });
         const url = URL.createObjectURL(blob);
+
+        // iOS Safari – ostrzeżenie
+        if (isIOS) {
+          alert(
+            language === 'pl'
+              ? 'Na Safari w iOS może być konieczne ręczne otwarcie pliku ICS w aplikacji Kalendarz.'
+              : 'On iOS Safari, you may need to manually open the ICS file in the Calendar app.'
+          );
+        }
+
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'plan-event.ics';
+        link.download = fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -341,7 +337,7 @@ export default function App() {
     );
   }
 
-  // Dodawanie do Google Calendar
+  // Dodanie do Google
   function handleAddToGoogle() {
     if (!validateData()) return;
 
@@ -374,7 +370,6 @@ export default function App() {
     const endStr = format(endDateTime, "yyyyMMdd'T'HHmmss");
     googleUrl.searchParams.append('dates', `${startStr}/${endStr}`);
 
-    // RRULE
     let rrule = '';
     if (isAdvanced && advancedRRule.trim()) {
       rrule = `RRULE:${advancedRRule.trim()}`;
@@ -414,7 +409,7 @@ export default function App() {
     window.open(googleUrl.toString(), '_blank');
   }
 
-  // Wysyłanie mailto + powiadomienia
+  // Mailto
   function handleShareViaEmail() {
     if (!validateData()) return;
 
@@ -461,11 +456,6 @@ export default function App() {
 
     const mailto = `mailto:${emails.join(',')}?subject=${subject}&body=${body}`;
     window.location.href = mailto;
-
-    // Jeżeli chcemy też ustawić powiadomienie
-    if (isAdvanced) {
-      scheduleNotification();
-    }
   }
 
   // Dodawanie załącznika do listy
@@ -516,6 +506,15 @@ export default function App() {
           </div>
 
           <h1 className="text-3xl font-bold text-center mb-8">{t('planName')}</h1>
+
+          {/* Ostrzeżenie iOS Safari */}
+          {isIOS && (
+            <div className="mb-4 p-2 bg-yellow-200 text-black rounded text-sm">
+              {language === 'pl'
+                ? 'Używasz Safari na iPhonie (iOS). Pobieranie plików ICS może wymagać otwarcia w aplikacji Kalendarz.'
+                : 'You are on iOS Safari. ICS file downloads may need to be opened in the Calendar app.'}
+            </div>
+          )}
 
           {errors.length > 0 && (
             <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
@@ -659,9 +658,7 @@ export default function App() {
                   <select
                     value={recurrence}
                     onChange={(e) =>
-                      setRecurrence(
-                        e.target.value as typeof recurrence
-                      )
+                      setRecurrence(e.target.value as typeof recurrence)
                     }
                     className="block w-full pl-10 rounded-md border-gray-300 p-2"
                   >
@@ -719,7 +716,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sekcja Zaawansowana */}
+            {/* Sekcja zaawansowana */}
             <div className="border-t pt-4 mt-4">
               <label className="inline-flex items-center mb-2 cursor-pointer">
                 <input
@@ -764,7 +761,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Zaawansowana RRULE */}
+                  {/* RRULE tekstowy */}
                   <div>
                     <label className="block text-sm font-medium">{t('advancedRule')}</label>
                     <input
@@ -786,7 +783,7 @@ export default function App() {
                     setAdvancedRRule={setAdvancedRRule}
                   />
 
-                  {/* Powiadomienie */}
+                  {/* Powiadomienie (w ICS) */}
                   <div>
                     <label className="block text-sm font-medium">{t('reminder')}</label>
                     <input
@@ -829,9 +826,31 @@ export default function App() {
                     {t('ignoreWorkHours')}
                   </label>
 
+                  {/* Alternatywna nazwa pliku ICS */}
+                  <div>
+                    <label className="inline-flex items-center mb-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={alternativeFileName}
+                        onChange={(e) => setAlternativeFileName(e.target.checked)}
+                        className="mr-2 rounded border-gray-300"
+                      />
+                      {language === 'pl'
+                        ? 'Alternatywne nazwy plików (np. meeting20250117-1300.ics)'
+                        : 'Alternative file name (e.g. meeting20250117-1300.ics)'}
+                    </label>
+                    <p className="text-sm text-gray-500">
+                      {language === 'pl'
+                        ? 'Po zaznaczeniu plik ICS będzie nazwany np. meeting20250117-1300.ics'
+                        : 'If checked, ICS will be named e.g. meeting20250117-1300.ics'}
+                    </p>
+                  </div>
+
                   {/* Import CSV */}
                   <div className="mt-4">
-                    <label className="block text-sm font-medium">{t('importCsvLabel')}</label>
+                    <label className="block text-sm font-medium">
+                      {t('importCsvLabel')}
+                    </label>
                     <p className="text-sm text-gray-500 mb-2">{t('importCsvInfo')}</p>
                     <input
                       type="file"
@@ -922,6 +941,9 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Baner dot. cookies – nie zostawiamy ciasteczek, ale informujemy użytkownika */}
+      <CookieBanner language={language} />
     </div>
   );
 }
