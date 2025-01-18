@@ -56,13 +56,8 @@ export default function SingleMonthCalendar({ language }: SingleMonthCalendarPro
         <thead>
           <tr>
             {dayNames.map((d) => (
-              <th key={d} className={
-                            darkMode
-                              ? 'p-1 border text-center font-medium bg-gray-700 text-white'
-                              : 'p-1 border text-center font-medium bg-gray-100 text-gray-800'
-              }
-                          >
-                            {d}
+              <th key={d} className="p-1 border text-center font-medium bg-gray-100">
+                {d}
               </th>
             ))}
           </tr>
