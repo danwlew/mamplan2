@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { createEvents } from 'ics';
 import { format, addMinutes, differenceInMinutes, isBefore } from 'date-fns';
-
+import timezones from './timezones';
 import {
   parseTimeToMinutes,
   isValidEmail,
@@ -678,20 +678,16 @@ export default function App() {
             <div>
               <label className="block text-sm font-medium">{t('timeZone')}</label>
               <select
-                value={timeZone}
-                onChange={(e) => setTimeZone(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 p-2"
-              >
-                <option value="Europe/Warsaw">Europe/Warsaw</option>
-                <option value="Europe/London">Europe/London</option>
-                <option value="America/Los_Angeles">America/Los_Angeles</option>
-                <option value="Europe/Kiev">Europe/Kiev</option>
-                <option value="Asia/Shanghai">Asia/Shanghai</option>
-                <option value="Asia/Kolkata">Asia/Kolkata</option>
-                <option value="UTC">UTC</option>
-                <option value="America/New_York">America/New_York</option>
-                <option value="Asia/Tokyo">Asia/Tokyo</option>
-              </select>
+  value={timeZone}
+  onChange={(e) => setTimeZone(e.target.value)}
+  className="mt-1 block w-full rounded-md border-gray-300 p-2"
+>
+  {timezones.map(({ value, label }) => (
+    <option key={value} value={value}>
+      {label}
+    </option>
+  ))}
+</select>
               <p className="text-sm mt-1">
                 {t('timeDiff')}: <strong>{diffDisplay}</strong>
               </p>
